@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>libBROry Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout & Theme */
+body { margin: 0; font-family: 'Poppins', sans-serif; background: #f1f5f9; display: flex; min-height: 100vh; }
+#sidebar { width: 260px; min-width: 260px; background: #0f172a; color: #fff; padding: 25px; display: none; flex-direction: column; height: 100vh; position: sticky; top: 0; box-sizing: border-box; }
+
+/* MODERN TRANSLUCENT LOGIN */
+#loginOverlay { 
+    position: fixed; inset: 0; 
+    background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://i.postimg.cc/7LzXtzL6/image.jpg'); 
+    background-size: cover; background-position: center; 
+    display: flex; justify-content: center; align-items: center; z-index: 100; 
+}
+.login-card { 
+    background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2); padding: 50px 40px; border-radius: 24px; width: 360px; 
+    text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); color: white;
+}
+.login-card input { background: rgba(255, 255, 255, 0.9); border: none; margin-bottom: 15px; }
+
+/* NOTIFICATION TOAST */
+#toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #334155; color: white; padding: 12px 24px; border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); display: none; z-index: 1000;
+    font-size: 14px; animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 20px; opacity: 1; } }
+
+/* UI ELEMENTS */
+input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #ccc; box-sizing: border-box; font-family: inherit; }
+button { background: #6366f1; color: #fff; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+button:hover { background: #4f46e5; }
+
+/* SMALL DUSTBIN STYLE */
+.btn-delete-small { 
+    background: #94a3b8; color: white; width: 28px; height: 28px; 
+    padding: 0; line-height: 28px; font-size: 14px; border-radius: 6px; 
+    float: right; margin: 0; cursor: pointer; border: none;
+}
+.btn-delete-small:hover { background: #64748b; }
+
+.nav-item { padding: 12px; border-radius: 10px; cursor: pointer; margin-bottom: 5px; transition: 0.2s; }
+.nav-item:hover, .nav-item.active { background: #6366f1; }
+#mainContent { flex: 1; padding: 40px; display: none; overflow-y: auto; }
+.glass { background: #fff; padding: 25px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th { text-align: left; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 15px; border-bottom: 1px solid #e5e7eb; }
+td { padding: 15px; border-bottom: 1px solid #e5e7eb; position: relative; }
+.hidden { display: none !important; }
+.badge { padding: 4px 10px; border-radius: 15px; font-size: 12px; font-weight: 600; }
+.pending { background: #f1f5f9; color: #475569; }
+.approved { background: #dcfce7; color: #166534; }
+.search-bar { width: 100%; max-width: 400px; margin-bottom: 20px; }
+.admin-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+#userBadge { font-size: 18px; font-weight: 600; color: #4361ee; }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div id="loginOverlay">
+  <div class="login-card">
+    <h1>libBROry 📚</h1>
+    <p style="margin-bottom:25px; opacity:0.8; font-size:14px">Welcome back, Bro!</p>
+    <input id="username" placeholder="Membership ID">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Sign In</button>
+    <p id="err" style="color:#ff8080; font-size:14px; margin-top:15px; font-weight:600"></p>
+  </div>
+</div>
+
+<nav id="sidebar">
+  <h3 style="margin-bottom:30px; padding-left:12px">libBROry</h3>
+  <div class="nav-item active" onclick="showPage('books',this)">📖 Catalog</div>
+  <div class="nav-item" onclick="showPage('res',this)">🕒 Reservations</div>
+  <div id="adminBtn" class="hidden nav-item" onclick="showPage('admin',this)">🛠 Admin Panel</div>
+  <div class="nav-item" style="margin-top:auto; background:#94a3b8; text-align:center" onclick="location.reload()">Logout</div>
+</nav>
+
+<main id="mainContent">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px">
+        <h2 id="title" style="margin:0">Catalog</h2>
+        <div id="userBadge"></div>
+    </div>
+
+    <div id="books" class="glass">
+        <input id="search" class="search-bar" placeholder="🔍 Search books by title..." onkeyup="renderBooks()">
+        <table>
+            <thead><tr><th>Book Info</th><th>Subject</th><th>Stock</th><th>Action</th></tr></thead>
+            <tbody id="bookBody"></tbody>
+        </table>
+    </div>
+
+    <div id="res" class="glass hidden">
+        <input id="resSearch" class="search-bar" placeholder="🔍 Search reservations..." onkeyup="renderRes()">
+        <table>
+            <thead><tr><th>Book</th><th>User</th><th>Status</th><th>Due Date</th><th>Action</th></tr></thead>
+            <tbody id="resBody"></tbody>
+        </table>
+    </div>
+
+    <div id="admin" class="glass hidden">
+        <h3>Inventory Management</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <input id="t" placeholder="Book Title">
+            <input id="a" placeholder="Author">
+            <input id="s" placeholder="Subject">
+            <input id="c" type="number" placeholder="Copies">
+        </div>
+        <button style="margin-top:10px; width:220px" onclick="addBook()">Add Book</button>
+
+        <div class="admin-section">
+            <h3>Member Management</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <input id="stuName" placeholder="Full Name (Register)">
+                <input id="stuEmail" placeholder="Email (Register)">
+                <input id="stuIDRemove" placeholder="ID (Remove)">
+                <input id="stuPassRemove" type="password" placeholder="Pass (Remove)">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px">
+                <button style="background:#0f172a" onclick="addStudent()">+ Register Member</button>
+                <button style="background:#94a3b8" onclick="removeStudentDirect()">- Remove Member</button>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+                <h4>Registered Members</h4>
+                <input id="userSearch" style="width:200px; padding:8px" placeholder="Filter members..." onkeyup="renderUserTable()">
+            </div>
+            <table>
+                <thead><tr><th>Name</th><th>ID</th><th>Email</th><th>Password Hint</th></tr></thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script>
+// INITIAL DATA RESET
+let users = JSON.parse(localStorage.getItem("lib_users")) || [
+    {id: "ADMIN1", pass: "admin123", role: "admin", name: "Admin Bro", email: "admin@lib.com"}
+];
+// We reset books and reservations to empty arrays to clear existing data
+let books = JSON.parse(localStorage.getItem("books")) || [];
+let reservations = JSON.parse(localStorage.getItem("res")) || [];
+let currentUser = "", currentRole = "";
+
+function notify(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg; t.style.display = "block";
+    setTimeout(() => { t.style.display = "none"; }, 3000);
+}
+
+function login(){
+    const u = document.getElementById("username").value.trim().toUpperCase();
+    const p = document.getElementById("password").value.trim();
+    const user = users.find(user => user.id === u && user.pass === p);
+    if(user){
+        currentUser = user.id; currentRole = user.role;
+        document.getElementById("loginOverlay").style.display="none";
+        document.getElementById("sidebar").style.display="flex";
+        document.getElementById("mainContent").style.display="block";
+        document.getElementById("userBadge").innerText = `Welcome, ${user.name}`;
+        if(currentRole === "admin") document.getElementById("adminBtn").classList.remove("hidden");
+        renderBooks(); renderRes(); renderUserTable();
+        notify("Logged in successfully, Bro!");
+    } else { document.getElementById("err").innerText = "❌ Invalid Credentials"; }
+}
+
+function showPage(id, el){
+    document.querySelectorAll('.glass').forEach(d => d.classList.add("hidden"));
+    document.getElementById(id).classList.remove("hidden");
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove("active"));
+    el.classList.add("active");
+    document.getElementById("title").innerText = el.innerText.replace(/^[^\s]+\s/, '');
+}
+
+function saveAll(){
+    localStorage.setItem("books", JSON.stringify(books));
+    localStorage.setItem("res", JSON.stringify(reservations));
+    localStorage.setItem("lib_users", JSON.stringify(users));
+    renderBooks(); renderRes(); renderUserTable();
+}
+
+function renderBooks(){
+    const body = document.getElementById("bookBody"); body.innerHTML = "";
+    let q = document.getElementById("search").value.toLowerCase();
+    books.filter(b => b.title.toLowerCase().includes(q)).forEach(b => {
+        let actionBtn = "";
+        if(currentRole === "student") {
+            actionBtn = b.copies > 0 ? `<button onclick="reserve(${b.id})" style="width:auto; padding:5px 12px">Reserve</button>` : `<span style="color:#94a3b8">Out</span>`;
+        } else {
+            actionBtn = `<button class="btn-delete-small" onclick="deleteBook(${b.id})">🗑</button>`;
+        }
+        body.innerHTML += `<tr><td><b>${b.title}</b><br><small>${b.author}</small></td><td>${b.subject}</td><td>${b.copies}</td><td>${actionBtn}</td></tr>`;
+    });
+}
+
+function deleteBook(id) {
+    let bIndex = books.findIndex(x => x.id === id);
+    if (bIndex === -1) return;
+    let book = books[bIndex];
+    if (book.copies > 1) {
+        book.copies--;
+        notify(`Removed 1 copy of ${book.title}.`);
+    } else {
+        if (confirm(`Remove "${book.title}" entirely?`)) {
+            books.splice(bIndex, 1);
+            notify("Book removed from catalog.");
+        }
+    }
+    saveAll();
+}
+
+function addBook(){
+    const title = document.getElementById("t").value.trim();
+    const copies = parseInt(document.getElementById("c").value) || 1;
+    if(!title) return notify("Enter a book title!");
+    let existing = books.find(b => b.title.toLowerCase() === title.toLowerCase());
+    if(existing) {
+        existing.copies += copies;
+        notify(`Updated stock: +${copies} copies.`);
+    } else {
+        books.push({id: Date.now(), title, author: document.getElementById("a").value, subject: document.getElementById("s").value, copies: copies});
+        notify("New book added!");
+    }
+    saveAll();
+    document.getElementById("t").value = ""; document.getElementById("c").value = "";
+}
+
+function addStudent(){
+    const name = document.getElementById("stuName").value.trim();
+    const email = document.getElementById("stuEmail").value.trim();
+    if(!name || !email) return notify("Name and Email required!");
+    
+    // LOGIC: ID = NAME IN CAPS + 1234 | PASS = NAME IN SMALL + 1234
+    const cleanName = name.replace(/\s/g, '');
+    const genID = cleanName.toUpperCase() + "1234";
+    const genPass = cleanName.toLowerCase() + "1234";
+
+    users.push({id: genID, pass: genPass, name: name, email: email, role: "student"});
+    saveAll();
+    notify(`Member Registered! ID: ${genID}`);
+    document.getElementById("stuName").value = ""; document.getElementById("stuEmail").value = "";
+}
+
+function removeStudentDirect() {
+    const targetID = document.getElementById("stuIDRemove").value.trim().toUpperCase();
+    const targetPass = document.getElementById("stuPassRemove").value.trim();
+    const idx = users.findIndex(u => u.id === targetID && u.role === "student" && u.pass === targetPass);
+    if (idx === -1) return notify("Invalid ID or Password!");
+    if (confirm("Delete this member?")) {
+        users.splice(idx, 1);
+        saveAll();
+        notify("Member removed.");
+        document.getElementById("stuIDRemove").value = ""; document.getElementById("stuPassRemove").value = "";
+    }
+}
+
+function renderUserTable(){
+    const body = document.getElementById("userTableBody");
+    const search = document.getElementById("userSearch").value.toLowerCase();
+    body.innerHTML = "";
+    users.filter(u => u.role === "student" && (u.name.toLowerCase().includes(search) || u.id.toLowerCase().includes(search))).forEach(u => {
+        body.innerHTML += `<tr><td>${u.name}</td><td><code>${u.id}</code></td><td>${u.email}</td><td>${u.pass}</td></tr>`;
+    });
+}
+
+function reserve(id){
+    const userRes = reservations.filter(r => r.user === currentUser);
+    if(userRes.length >= 2) return alert("Limit: 2 books!");
+    let b = books.find(x => x.id === id);
+    if(b && b.copies > 0) {
+        b.copies--;
+        reservations.push({id: Date.now(), bId: id, title: b.title, user: currentUser, status: "Pending", dueDate: "-"});
+        saveAll();
+        notify("Reservation sent!");
+    }
+}
+
+function renderRes(){
+    const body = document.getElementById("resBody"); body.innerHTML = "";
+    let q = document.getElementById("resSearch").value.toLowerCase();
+    let data = currentRole === "admin" ? reservations : reservations.filter(r => r.user === currentUser);
+    data.filter(r => r.title.toLowerCase().includes(q) || r.user.toLowerCase().includes(q)).forEach(r => {
+        let btn = "";
+        if(currentRole === "admin" && r.status === "Pending") btn = `<button onclick="approve(${r.id})" style="background:#10b981; width:auto; padding:5px 10px">Approve</button>`;
+        if(r.status === "Approved") btn = `<button onclick="cancel(${r.id})" style="background:#94a3b8; width:auto; padding:5px 10px">Return</button>`;
+        if(currentRole === "student" && r.status === "Pending") btn = `<button onclick="cancel(${r.id})" style="background:#64748b; width:auto; padding:5px 10px">Cancel</button>`;
+        body.innerHTML += `<tr><td>${r.title}</td><td>${r.user}</td><td><span class="badge ${r.status.toLowerCase()}">${r.status}</span></td><td>${r.dueDate}</td><td>${btn}</td></tr>`;
+    });
+}
+
+function approve(id){ 
+    let res = reservations.find(x => x.id === id);
+    res.status = "Approved"; 
+    let d = new Date(); d.setDate(d.getDate() + 30);
+    res.dueDate = d.toLocaleDateString('en-GB');
+    saveAll();
+    notify("Approved!");
+}
+
+function cancel(id){
+    let r = reservations.find(x => x.id === id);
+    let b = books.find(x => x.id === r.bId);
+    if(b) b.copies++;
+    reservations = reservations.filter(x => x.id !== id);
+    saveAll();
+    notify("Removed from reservations.");
+}
+</script>
+</body>
+</html>
